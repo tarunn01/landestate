@@ -1,0 +1,56 @@
+# Core FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Data Validation & Settings
+pydantic==2.5.0
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# Database & ORM
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Geospatial (PostGIS)
+geoalchemy2==0.14.1
+shapely==2.0.2
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+pyjwt==2.8.1
+
+# Caching & Rate Limiting
+redis==5.0.1
+aioredis==2.0.1
+
+# Async Task Processing
+celery==5.3.4
+
+# CORS
+fastapi-cors==0.0.6
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# Logging & Monitoring
+python-json-logger==2.0.7
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
+faker==20.1.0
+
+# Code Quality
+black==23.12.0
+flake8==6.1.0
+isort==5.13.2
+pylint==3.0.3
+mypy==1.7.1
+
+# Development
+ipython==8.18.1
