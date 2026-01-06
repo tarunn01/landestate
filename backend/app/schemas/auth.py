@@ -12,7 +12,7 @@ WHY? These define:
 
 from datetime import datetime
 from typing import Optional, Literal
-from pydantic import BaseModel, Field, EmailStr, validator, field_validator
+from pydantic import BaseModel, Field, EmailStr, validator
 from .common import TimestampMixin
 
 
@@ -59,7 +59,7 @@ class UserRegisterRequest(BaseModel):
         description="User role"
     )
 
-    @field_validator('password')
+    @validator('password')
     @classmethod
     def validate_password(cls, v: str) -> str:
         """
@@ -88,6 +88,26 @@ class UserLoginRequest(BaseModel):
     """
     email: EmailStr = Field(..., description="User email")
     password: str = Field(..., description="User password")
+
+
+class UserUpdateRequest(BaseModel):
+    """
+    Request body for PUT /users/{user_id}
+    
+    All fields are OPTIONAL - only update what you send.
+    
+    EXAMPLE REQUEST:
+    {
+        "first_name": "John",
+        "last_name": "Doe",
+        "phone": "+1234567890",
+        "profile_picture": "https://example.com/image.jpg"
+    }
+    """
+    first_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=50)
+    phone: Optional[str] = Field(None, max_length=20)
+    profile_picture: Optional[str] = Field(None, max_length=500)
 
 
 class RefreshTokenRequest(BaseModel):
@@ -142,7 +162,7 @@ class UserResponse(TimestampMixin):
     is_active: bool = Field(True, description="Is user active")
     
     class Config:
-        from_attributes = True  # Convert SQLAlchemy model to this schema
+        from_orm = True  # Convert SQLAlchemy model to this schema
 
 
 class TokenResponse(BaseModel):

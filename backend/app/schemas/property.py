@@ -8,7 +8,7 @@ WHY? Define what data is expected for properties and what we return.
 
 from datetime import datetime
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 from .common import LocationResponse, TimestampMixin, GeometryCoordinates
 
 
@@ -39,7 +39,7 @@ class BrokerResponse(BrokerBase, TimestampMixin):
     total_reviews: int = Field(0, description="Total reviews count")
 
     class Config:
-        from_attributes = True
+        from_orm = True
 
 
 # ============================================================================
@@ -66,7 +66,7 @@ class PropertyImageResponse(BaseModel):
     uploaded_at: datetime = Field(..., description="When image was uploaded")
 
     class Config:
-        from_attributes = True
+        from_orm = True
 
 
 # ============================================================================
@@ -81,21 +81,24 @@ class PropertyCreateRequest(BaseModel):
     {
         "title": "2 Acre Residential Plot",
         "description": "Beautiful land with road access",
-        "property_type": "RESIDENTIAL",
         "price": 500000,
-        "currency": "USD",
-        "area_sqft": 87120,
-        "location_id": "loc-123",
-        "amenities": ["Water Access", "Road Access"],
+        "city": "New York",
+        "address": "123 Main Street, New York",
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "plot_size": 2000,
+        "built_area": 1500,
+        "contact_phone": "+1234567890",
+        "broker_id": "broker-123",
         "geometry": {
             "type": "Polygon",
             "coordinates": [[[40.7128, -74.0060], ...]]
-        },
-        "contact_phone": "+1234567890"
+        }
     }
     
     WHO CREATES? Only BROKER and OWNER roles
     """
+    # Required fields
     title: str = Field(
         ...,
         min_length=5,
@@ -108,26 +111,22 @@ class PropertyCreateRequest(BaseModel):
         max_length=5000,
         description="Property description"
     )
-    property_type: Literal[
-        "RESIDENTIAL",
-        "COMMERCIAL",
-        "AGRICULTURAL",
-        "INDUSTRIAL",
-        "MIXED"
-    ] = Field(..., description="Type of property")
     price: float = Field(..., gt=0, description="Property price")
-    currency: str = Field("USD", max_length=3, description="Currency code")
-    area_sqft: float = Field(..., gt=0, description="Area in square feet")
-    location_id: str = Field(..., description="Location ID")
-    amenities: List[str] = Field(
-        default_factory=list,
-        description="List of amenities (Water, Road, Electricity, etc)"
-    )
+    city: str = Field(..., min_length=2, max_length=100, description="City where the property is located")
+    address: str = Field(..., min_length=10, max_length=300, description="Full property address")
+    contact_phone: str = Field(..., description="Contact phone number")
+    broker_id: str = Field(..., description="Broker ID")
+    
+    # Optional fields
+    bedrooms: Optional[int] = Field(None, ge=0, description="Number of bedrooms")
+    bathrooms: Optional[int] = Field(None, ge=0, description="Number of bathrooms")
+    plot_size: Optional[float] = Field(None, gt=0, description="Plot size in square meters")
+    built_area: Optional[float] = Field(None, gt=0, description="Built area in square meters")
     geometry: Optional[GeometryCoordinates] = Field(
         None,
         description="Plot boundary as GeoJSON polygon"
     )
-    contact_phone: str = Field(..., description="Contact phone number")
+
 
 
 class PropertyUpdateRequest(BaseModel):
@@ -139,6 +138,14 @@ class PropertyUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, min_length=5, max_length=200)
     description: Optional[str] = Field(None, min_length=10, max_length=5000)
     price: Optional[float] = Field(None, gt=0)
+    city: Optional[str] = Field(None, min_length=2, max_length=100)
+    address: Optional[str] = Field(None, min_length=10, max_length=300)
+    bedrooms: Optional[int] = Field(None, ge=0)
+    bathrooms: Optional[int] = Field(None, ge=0)
+    plot_size: Optional[float] = Field(None, gt=0)
+    built_area: Optional[float] = Field(None, gt=0)
+    contact_phone: Optional[str] = Field(None)
+    geometry: Optional[GeometryCoordinates] = Field(None)
     amenities: Optional[List[str]] = Field(None)
     contact_phone: Optional[str] = Field(None)
 
@@ -187,7 +194,7 @@ class PropertyListItemResponse(TimestampMixin):
     favorites_count: int = Field(0, description="Number of favorites")
 
     class Config:
-        from_attributes = True
+        from_orm = True
 
 
 class PropertyDetailResponse(TimestampMixin):
@@ -246,7 +253,7 @@ class PropertyDetailResponse(TimestampMixin):
     contact_phone: str = Field(..., description="Contact phone")
 
     class Config:
-        from_attributes = True
+        from_orm = True
 
 
 class PropertyCreateResponse(BaseModel):
@@ -305,7 +312,7 @@ class PropertyNearbyResponse(BaseModel):
     )
 
     class Config:
-        from_attributes = True
+        from_orm = True
 
 
 class PropertySearchResponseWrapper(BaseModel):
@@ -335,3 +342,25 @@ class PropertySearchResponseWrapper(BaseModel):
         description="Properties sorted by distance"
     )
 
+class PropertyUpdateResponse(BaseModel):
+    """
+    Response from updating a property.
+    
+    USED IN: PUT /properties/{property_id} response
+    
+    EXAMPLE:
+    {
+        "id": "prop-789",
+        "title": "Updated Title",
+        "price": 550000,
+        "status": "AVAILABLE",
+        "updated_at": "2024-01-04T11:00:00Z"
+    }
+    
+    WHY simple? Frontend just needs confirmation of updated fields.
+    """
+    id: str = Field(..., description="Property ID")
+    title: str = Field(..., description="Updated title")
+    price: float = Field(..., description="Updated price")
+    status: str = Field(..., description="Current status")
+    updated_at: datetime = Field(..., description="Last updated timestamp")

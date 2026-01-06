@@ -140,7 +140,7 @@ class LocationResponse(LocationBase):
     property_count: int = Field(0, description="Number of properties in location")
 
     class Config:
-        from_attributes = True  # Works with SQLAlchemy models
+        from_orm = True  # Works with SQLAlchemy models
 
 
 # ============================================================================
@@ -192,7 +192,7 @@ class TimestampMixin(BaseModel):
     updated_at: Optional[datetime] = Field(None, description="When this was last updated")
 
     class Config:
-        from_attributes = True
+        from_orm = True
 
 
 # ============================================================================
