@@ -31,7 +31,7 @@ from app.models.user import User
 from app.api.dependencies import get_current_user
 
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(tags=["Authentication"])
 
 
 # ============================================================================

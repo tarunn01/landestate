@@ -13,6 +13,7 @@ WHY? Centralized security logic:
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
+import hashlib
 from passlib.context import CryptContext
 from pydantic import ValidationError
 
@@ -28,24 +29,34 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
     """
-    Hash a plaintext password using bcrypt.
+    Hash a plaintext password using SHA256 + bcrypt.
+    
+    First hashes with SHA256 (always 64 bytes), then bcrypt.
+    This ensures bcrypt never receives input longer than 72 bytes.
     
     USAGE:
     hashed = hash_password("SecurePass123")
     # Returns: $2b$12$...long hash string...
     """
-    return pwd_context.hash(password)
+    # Pre-hash with SHA256 to normalize length (always 64 bytes)
+    sha256_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    # Now bcrypt the SHA256 hash (always 64 bytes, well under 72-byte limit)
+    return pwd_context.hash(sha256_hash)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify plaintext password against bcrypt hash.
     
+    Uses same SHA256 + bcrypt approach as hash_password.
+    
     USAGE:
     if verify_password("SecurePass123", user.password_hash):
         print("Password correct!")
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    # Apply same SHA256 pre-hash for consistency
+    sha256_hash = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
+    return pwd_context.verify(sha256_hash, hashed_password)
 
 
 # ============================================================================

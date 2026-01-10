@@ -161,8 +161,8 @@ class UserResponse(TimestampMixin):
     profile_picture: Optional[str] = Field(None, description="Profile image URL")
     is_active: bool = Field(True, description="Is user active")
     
-    class Config:
-        from_orm = True  # Convert SQLAlchemy model to this schema
+    class Config(TimestampMixin.Config):
+        orm_mode = True  # Allow conversion from SQLAlchemy ORM models
 
 
 class TokenResponse(BaseModel):
@@ -252,5 +252,3 @@ class TokenPayload(BaseModel):
     exp: int = Field(..., description="Expiration timestamp")
     iat: int = Field(..., description="Issued at timestamp")
     type: str = Field(..., description="Token type: 'access' or 'refresh'")
-
-

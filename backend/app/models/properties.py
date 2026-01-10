@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
-from geoalchemy2 import Geometry
+# from geoalchemy2 import Geometry
 from datetime import datetime
 import uuid
 from app.core.database import Base
@@ -19,7 +19,7 @@ class Property(Base):
     plot_size = Column(Float, nullable=True)  # in square meters
     built_area = Column(Float, nullable=True)  # in square meters
     contact_phone = Column(String, nullable=False)
-    geometry = Column(Geometry('POLYGON'), nullable=True)  # Optional geometry
+    # geometry = Column(Geometry('POLYGON'), nullable=True)  # Optional geometry
 
     # Foreign key to broker (User)
     broker_id = Column(String, ForeignKey("users.id"), nullable=False)

@@ -87,16 +87,12 @@ class PropertyCreateRequest(BaseModel):
         "bedrooms": 3,
         "bathrooms": 2,
         "plot_size": 2000,
-        "built_area": 1500,
-        "contact_phone": "+1234567890",
-        "broker_id": "broker-123",
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[[40.7128, -74.0060], ...]]
-        }
+        "built_area": 1500
     }
     
     WHO CREATES? Only BROKER and OWNER roles
+    NOTE: broker_id is auto-filled from authenticated user
+    NOTE: contact_phone is optional
     """
     # Required fields
     title: str = Field(
@@ -114,8 +110,6 @@ class PropertyCreateRequest(BaseModel):
     price: float = Field(..., gt=0, description="Property price")
     city: str = Field(..., min_length=2, max_length=100, description="City where the property is located")
     address: str = Field(..., min_length=10, max_length=300, description="Full property address")
-    contact_phone: str = Field(..., description="Contact phone number")
-    broker_id: str = Field(..., description="Broker ID")
     
     # Optional fields
     bedrooms: Optional[int] = Field(None, ge=0, description="Number of bedrooms")

@@ -192,7 +192,7 @@ class TimestampMixin(BaseModel):
     updated_at: Optional[datetime] = Field(None, description="When this was last updated")
 
     class Config:
-        from_orm = True
+        orm_mode = True
 
 
 # ============================================================================
