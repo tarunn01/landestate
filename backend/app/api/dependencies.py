@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import verify_token
+from app.models.user import User
 
 # ============================================================================
 # JWT SECURITY SCHEME
@@ -76,8 +77,16 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Return user info as dict
-    return {"user_id": user_id}
+    # Fetch the actual User object from database
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    
+    # Return the User ORM object (will be converted to UserResponse by schema)
+    return user
 
 
 async def get_current_user_optional(

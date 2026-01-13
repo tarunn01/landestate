@@ -18,7 +18,7 @@ from app.schemas.property import (
     PropertyUpdateRequest,
     PropertyUpdateResponse,
 )
-from app.core.databasewa import get_db
+from app.core.database import get_db
 from app.api.dependencies import get_current_user
 from app.models.properties import Property as PropertyModel
 
