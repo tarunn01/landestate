@@ -1,0 +1,4 @@
+theme: jekyll-theme-cayman
+title: LandEstate - Property Marketplace Platform
+description: Geospatial property marketplace with FastAPI & React
+show_downloads: false
