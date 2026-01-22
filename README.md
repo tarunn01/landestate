@@ -20,33 +20,178 @@ Server will run on `http://127.0.0.1:8000`
 - **Swagger UI**: http://127.0.0.1:8000/docs
 - **ReDoc**: http://127.0.0.1:8000/redoc
 
+## 🏗️ Architecture
+
+LandEstate follows a **Layered Architecture** pattern with clear separation of concerns:
+
+```
+┌─────────────────────────────────────────────────────┐
+│               Frontend (React + Vite)                │
+│        (App.jsx, components/, pages/, services/)    │
+└────────────────┬────────────────────────────────────┘
+                 │ HTTP/REST API
+┌────────────────▼────────────────────────────────────┐
+│          API Layer (routes.py, v1/*.py)              │
+│    ├─ Auth, Properties, Users, Reviews endpoints    │
+│    └─ Request validation, response serialization    │
+└────────────────┬────────────────────────────────────┘
+                 │ Dependency Injection
+┌────────────────▼────────────────────────────────────┐
+│        Business Logic Layer (services/)             │
+│    ├─ Authentication logic, authorization           │
+│    ├─ Property business rules                       │
+│    └─ Review management                             │
+└────────────────┬────────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────────┐
+│         Data Access Layer (models/, CRUD)           │
+│    ├─ SQLAlchemy ORM models                         │
+│    ├─ Database queries                              │
+│    └─ Data transformation                           │
+└────────────────┬────────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────────┐
+│      Core Layer (config, security, database)        │
+│    ├─ JWT token generation & validation             │
+│    ├─ Password hashing (bcrypt)                     │
+│    └─ Database connection pool                      │
+└────────────────┬────────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────────┐
+│   PostgreSQL Database with PostGIS (Geospatial)     │
+│    ├─ users table (authentication)                  │
+│    ├─ properties table (listings)                   │
+│    ├─ locations table (geospatial data)             │
+│    └─ reviews table (user feedback)                 │
+└─────────────────────────────────────────────────────┘
+```
+
+### Data Flow Example: Creating a Property
+
+```
+User (Frontend) 
+   │
+   ├─> POST /properties with property data
+   │
+Client (React)
+   │
+   ├─> HTTP Request
+   │
+API Layer (routes.py)
+   │
+   ├─> Extract JWT token from headers
+   ├─> Validate request schema (Pydantic)
+   │
+Business Logic (services/)
+   │
+   ├─> Check user authorization
+   ├─> Apply business rules
+   │
+Data Access Layer (models/)
+   │
+   ├─> Create SQLAlchemy instance
+   ├─> Save to database
+   │
+Database (PostgreSQL)
+   │
+   ├─> Store data
+   ├─> Generate ID
+   │
+Response back to Client
+   │
+   └─> JSON: { property_id, status, data }
+```
+
+### Key Architectural Decisions
+
+1. **Layered Architecture**: Each layer has a specific responsibility
+   - Clear separation makes testing and maintenance easier
+   - Easy to swap implementations (e.g., database)
+
+2. **Dependency Injection**: FastAPI's `Depends()` provides:
+   - Automatic request validation
+   - Centralized authentication checks
+   - Database session management
+
+3. **Type Safety**: Pydantic schemas ensure:
+   - Input validation
+   - Response schema consistency
+   - IDE autocomplete
+
+4. **Resource-Based Design**: Endpoints are organized by resource:
+   - `/auth` for authentication
+   - `/properties` for property listings
+   - `/users` for user profiles
+   - `/reviews` for reviews
+
 ## 📁 Project Structure
 
 ```
 backend/
 ├── app/
-│   ├── main.py                 # FastAPI app initialization
-│   ├── api/
-│   │   ├── routes.py          # Main router
-│   │   ├── dependencies.py     # JWT dependencies
-│   │   └── v1/
-│   │       ├── auth.py        # Authentication endpoints
-│   │       ├── properties.py  # Property endpoints
-│   │       └── users_endpoints.py  # User endpoints
-│   ├── schemas/
-│   │   ├── auth.py            # Auth schemas
-│   │   ├── property.py        # Property schemas
-│   │   └── common.py          # Common/base schemas
-│   ├── models/
-│   │   ├── user.py            # User model
-│   │   └── properties.py      # Property model
-│   └── core/
-│       ├── config.py          # Configuration
-│       ├── database.py        # Database setup
-│       └── security.py        # JWT & password hashing
-├── requirements.txt
-└── .env
+│   ├── main.py                 # FastAPI app initialization & middleware
+│   ├── api/                    # HTTP request handlers
+│   │   ├── routes.py           # Main router (combines all endpoints)
+│   │   ├── dependencies.py     # JWT & DB session dependencies
+│   │   └── v1/                 # API version 1
+│   │       ├── auth.py         # Login, register, token refresh
+│   │       ├── properties.py   # CRUD operations for properties
+│   │       ├── locations.py    # Location/geospatial endpoints
+│   │       ├── reviews.py      # Property reviews
+│   │       └── users.py        # User profile endpoints
+│   ├── schemas/                # Pydantic models (validation & docs)
+│   │   ├── auth.py             # Auth request/response schemas
+│   │   ├── property.py         # Property DTOs
+│   │   ├── locations.py        # Location schemas
+│   │   ├── reviews.py          # Review schemas
+│   │   └── common.py           # Base models, pagination
+│   ├── models/                 # SQLAlchemy ORM models (database schema)
+│   │   ├── user.py             # User table definition
+│   │   ├── properties.py       # Property table definition
+│   │   ├── locations.py        # Location table (PostGIS geospatial)
+│   │   └── reviews.py          # Review table definition
+│   ├── services/               # Business logic (need to add later)
+│   │   └── __init__.py
+│   ├── crud/                   # CRUD operations (need tp add later)
+│   │   └── __init__.py
+│   └── core/                   # Configuration & utilities
+│       ├── config.py           # Environment variables, settings
+│       ├── database.py         # SQLAlchemy engine, session factory
+│       └── security.py         # JWT token, password hashing logic
+├── requirements.txt            # Python dependencies
+├── pyproject.toml              # Project metadata
+└── init_db.py                  # Database initialization script
+
+frontend/
+├── src/
+│   ├── App.jsx                 # Main React component
+│   ├── main.jsx                # React entry point
+│   ├── components/             # Reusable React components
+│   │   ├── Header.jsx
+│   │   ├── PropertyCard.jsx
+│   │   └── ...
+│   ├── pages/                  # Page-level components (routes)
+│   │   ├── PropertyList.jsx
+│   │   ├── PropertyDetail.jsx
+│   │   ├── Login.jsx
+│   │   └── ...
+│   └── services/               # API client & utilities
+│       └── api.js              # Axios/Fetch wrapper for backend
+├── index.html                  # HTML entry point
+├── package.json                # NPM dependencies
+└── vite.config.js              # Vite build configuration
 ```
+
+### Folder Responsibilities
+
+| Folder | Purpose | Example |
+|--------|---------|---------|
+| `api/` | HTTP endpoints & routing | Defines `POST /auth/login` |
+| `schemas/` | Input/output validation & documentation | Validates login credentials |
+| `models/` | Database tables & relationships | Defines `users` table structure |
+| `core/` | Security, config, database setup | JWT token generation |
+| `services/` | Business logic (future expansion) | Complex operations |
+| `crud/` | Database queries (future expansion) | Query builders |
 
 ## 🔐 Authentication
 
@@ -195,8 +340,7 @@ Error responses:
   "detail": "Error message"
 }
 ```
-
-## 🤝 Contributing
+## Contributing
 
 1. Create feature branch
 2. Make changes
@@ -205,13 +349,9 @@ Error responses:
 
 ## 📞 Support
 
-For API documentation, visit: http://127.0.0.1:8000/docs
-
-## 📄 License
-
-MIT License - See LICENSE file for details
+For API documentation, visit: http://127.0.0.1:8000/docs,tarunkmr566@gmail.com
 
 ---
 
-**Last Updated**: January 6, 2026  
+**Last Updated**: January 14, 2026  
 **Status**: ✅ Production Ready

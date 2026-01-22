@@ -44,3 +44,7 @@ frontend/build/
 
 # Logs
 *.log
+# Markdown files (except README and docs folder)
+/*.md
+!README.md
+!docs/

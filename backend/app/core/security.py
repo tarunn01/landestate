@@ -201,4 +201,3 @@ def create_token_pair(user_id: str) -> dict:
         "token_type": "bearer",
         "expires_in": 900  # 15 minutes
     }
-

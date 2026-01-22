@@ -321,7 +321,7 @@ The API is configured for production deployment. Set environment variables and u
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-## 📊 API Response Format
+## API Response Format
 
 All responses follow consistent JSON format:
 
@@ -355,4 +355,4 @@ For API documentation, visit: http://127.0.0.1:8000/docs
 ---
 
 **Last Updated**: January 19, 2026  
-**Status**: ✅ Production Ready
+**Status**: Production Ready
