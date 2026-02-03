@@ -18,6 +18,7 @@ class Location(Base):
     state = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
     location_type = Column(String(100), nullable=True)
+    created_by = Column(String(100), ForeignKey("user.id"), nullable=True)
 
     # Relationships
     properties = relationship("Property", back_populates="locations")

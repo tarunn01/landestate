@@ -60,6 +60,24 @@ class LocationCreateRequest(BaseLocation):
     updated_at: datetime = Field(..., description="giving updated location timestamp.")
 
 
+class LocationUpdateRequest(BaseLocation):
+    locaiton_name: Optional[str] = Field(None, min_length=5, max_length=200)
+    description: Optional[str] = Field(None, min_length=10, max_length=5000)
+    location_id: Optional[str] = Field(..., description="provide location id")
+    latitude: Optional[float] = Field(..., description="provide precise latitude")
+    longitude: Optional[float] = Field(..., description="provide precise longitude")
+    city: Optional[str] = Field(None, min_length=2, max_length=100)
+    address: Optional[str] = Field(None, min_length=10, max_length=300)
+    updated_at: datetime = Field(..., description="giving updated location timestamp.")
+
+
+class LocationUpdateResponse(BaseLocation):
+    id: str = Field(..., description="location ID")
+    title: str = Field(..., description="Updated title")
+    status: str = Field(..., description="Current status")
+    updated_at: datetime = Field(..., description="Last updated timestamp")
+
+
 # class
 
 # country         → Country name (user provided)

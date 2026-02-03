@@ -23,14 +23,13 @@ from app.models.user import User
 # ============================================================================
 
 # This makes FastAPI show "Authorize" button in Swagger UI
-security = HTTPBearer(
-    description="JWT token in Authorization header"
-)
+security = HTTPBearer(description="JWT token in Authorization header")
 
 
 # ============================================================================
 # DEPENDENCY: Get Current User from JWT Token
 # ============================================================================
+
 
 async def get_current_user(
     request: Request,
@@ -38,24 +37,24 @@ async def get_current_user(
 ):
     """
     Extract and validate JWT token from Authorization header.
-    
+
     USAGE in protected endpoints:
     @router.get("/me")
     async def get_me(current_user = Depends(get_current_user)):
         return current_user
-    
+
     This ensures only authenticated users can access the endpoint.
-    
+
     REQUEST HEADER:
     Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-    
+
     ERROR if token is:
     - Missing
     - Invalid
     - Expired
     - Wrong type
     """
-    
+
     # Extract token from Authorization header
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
@@ -64,19 +63,19 @@ async def get_current_user(
             detail="Missing or invalid authorization header",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     token = auth_header[7:]  # Remove "Bearer " prefix
-    
+
     # Verify token and get user_id
     user_id = verify_token(token, token_type="access")
-    
+
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Fetch the actual User object from database
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -84,7 +83,7 @@ async def get_current_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
+
     # Return the User ORM object (will be converted to UserResponse by schema)
     return user
 
@@ -95,7 +94,7 @@ async def get_current_user_optional(
 ):
     """
     Optional authentication - endpoint works with or without token.
-    
+
     USAGE:
     @router.get("/properties")
     async def list_properties(
@@ -109,17 +108,17 @@ async def get_current_user_optional(
             # User not logged in - show public properties
             return public_properties()
     """
-    
+
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return None
-    
+
     token = auth_header[7:]
     user_id = verify_token(token, token_type="access")
-    
+
     if user_id is None:
         return None
-    
+
     return {"user_id": user_id}
 
 
@@ -127,12 +126,13 @@ async def get_current_user_optional(
 # DEPENDENCY: Verify Refresh Token
 # ============================================================================
 
+
 async def verify_refresh_token(
     request: Request,
 ) -> str:
     """
     Verify refresh token and return user_id.
-    
+
     USAGE in /auth/refresh endpoint:
     @router.post("/refresh")
     async def refresh(
@@ -141,11 +141,11 @@ async def verify_refresh_token(
         # Create new access token
         access_token = create_access_token(user_id)
         return {...}
-    
+
     REQUEST HEADER:
     Authorization: Bearer {refresh_token}
     """
-    
+
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(
@@ -153,17 +153,17 @@ async def verify_refresh_token(
             detail="Missing or invalid authorization header",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     token = auth_header[7:]
     user_id = verify_token(token, token_type="refresh")
-    
+
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return user_id
 
 
@@ -171,13 +171,14 @@ async def verify_refresh_token(
 # DEPENDENCY: Check User Role
 # ============================================================================
 
+
 async def require_broker_role(
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Ensure user has BROKER role.
-    
+
     USAGE:
     @router.post("/properties")
     async def create_property(
@@ -186,7 +187,7 @@ async def require_broker_role(
     ):
         ...
     """
-    
+
     # TODO: Check user role in database
     # user = db.query(User).filter(User.id == current_user["id"]).first()
     # if user.role != "BROKER":
@@ -194,17 +195,17 @@ async def require_broker_role(
     #         status_code=status.HTTP_403_FORBIDDEN,
     #         detail="Only brokers can create properties"
     #     )
-    
+
     return current_user
 
 
 async def require_owner_or_admin(
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Ensure user is owner or admin.
-    
+
     USAGE:
     @router.delete("/{id}")
     async def delete_property(
@@ -213,11 +214,10 @@ async def require_owner_or_admin(
     ):
         ...
     """
-    
+
     # TODO: Check user role in database
     # user = db.query(User).filter(User.id == current_user["id"]).first()
     # if user.role not in ["OWNER", "ADMIN"]:
     #     raise HTTPException(status_code=403, detail="Forbidden")
-    
-    return current_user
 
+    return current_user
