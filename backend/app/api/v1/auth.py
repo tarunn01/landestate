@@ -19,6 +19,7 @@ from app.schemas.auth import (
     UserResponse,
     LogoutResponse,
     RefreshTokenRequest,
+    UserRegisterResponse,
 )
 from app.core.database import get_db
 from app.core.security import (
@@ -45,7 +46,7 @@ class Auth:
     def __init__(self, db: Session = Depends(get_db)):
         self.db = db
 
-    async def register(self, request: UserRegisterRequest) -> LoginResponse:
+    async def register(self, request: UserRegisterRequest) -> UserRegisterResponse:
         """Register a new user account."""
         existing_user = self.db.query(User).filter(User.email == request.email).first()
         if existing_user:
@@ -68,12 +69,17 @@ class Auth:
         self.db.refresh(new_user)
 
         tokens = create_token_pair(str(new_user.id))
-        return LoginResponse(
+        return UserRegisterResponse(
+            id=str(new_user.id),
+            email=new_user.email,
+            first_name=new_user.first_name,
+            last_name=new_user.last_name,
+            phone=new_user.phone,
+            role=new_user.role,
             access_token=tokens["access_token"],
             refresh_token=tokens["refresh_token"],
             token_type="bearer",
             expires_in=3600,
-            user=UserResponse.from_orm(new_user),
         )
 
     async def login(self, request: UserLoginRequest) -> LoginResponse:
@@ -97,7 +103,7 @@ class Auth:
             refresh_token=tokens["refresh_token"],
             token_type="bearer",
             expires_in=3600,
-            user=UserResponse.from_orm(user),
+            user=UserResponse.model_validate(user),
         )
 
     async def logout(self) -> LogoutResponse:
@@ -162,22 +168,13 @@ class AuthRefresh:
             refresh_token=tokens["refresh_token"],
             token_type="bearer",
             expires_in=3600,
-            user=UserResponse.from_orm(user),
+            user=UserResponse.model_validate(user),
         )
 
 
 # ============================================================================
 # ENDPOINTS
 # ============================================================================
-
-
-@router.post("", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
-async def register(
-    request: UserRegisterRequest,
-    auth: Auth = Depends(),
-):
-    """POST /auth - Register new user"""
-    return await auth.register(request)
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -222,3 +219,21 @@ async def refresh_token(
 ):
     """POST /auth/refresh - Get new access token"""
     return await auth_refresh.refresh(request)
+
+
+@router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    request: UserRegisterRequest,
+    auth: Auth = Depends(),
+):
+    """POST /auth/register - Register new user and return tokens"""
+    return await auth.register(request)
+
+
+# @router.post("", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+# async def register(
+#     request: UserRegisterRequest,
+#     auth: Auth = Depends(),
+# ):
+#     """POST /auth - Register new user"""
+#     return await auth.register(request)

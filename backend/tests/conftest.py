@@ -3,7 +3,6 @@ File: tests/conftest.py
 
 Pytest configuration and shared fixtures for all tests.
 
-WHY CONFTEST?
 - Centralized fixtures (reusable test utilities)
 - Shared setup/teardown logic
 - Test database configuration
@@ -18,9 +17,12 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.database import Base, get_db
-from app.models.user import User
 from app.core.security import hash_password
+from app.core.security import create_access_token
 
+from app.models.user import User
+from app.models.locations import Location
+from app.models.properties import Property
 
 # ============================================================================
 # DATABASE FIXTURES
@@ -112,6 +114,18 @@ def test_user_data():
 
 
 @pytest.fixture
+def test_admin_data():
+    return {
+        "email": "testadmin@example.com",
+        "password": "AdminPass123!",
+        "first_name": "John",
+        "last_name": "Doe",
+        "phone": "+1234567890",
+        "role": "ADMIN",
+    }
+
+
+@pytest.fixture
 def test_user_in_db(test_db, test_user_data):
     """
     Create a real user in test database.
@@ -142,7 +156,30 @@ def test_user_in_db(test_db, test_user_data):
 
 
 @pytest.fixture
-def valid_token(test_user_in_db, test_user_data):
+def admin_user_in_db(test_db, test_admin_data):
+    admin_user = User(
+        id="admin-user-1",
+        email=test_admin_data["email"],
+        password_hash=hash_password(test_admin_data["password"]),
+        first_name=test_admin_data["first_name"],
+        last_name=test_admin_data["last_name"],
+        phone=test_admin_data["phone"],
+        role=test_admin_data["role"],
+        is_active=True,
+    )
+    test_db.add(admin_user)
+    test_db.commit()
+    test_db.refresh(admin_user)
+    return admin_user
+
+
+@pytest.fixture
+def admin_token(admin_user_in_db):
+    return create_access_token(admin_user_in_db.id)
+
+
+@pytest.fixture
+def valid_token(test_user_in_db):
     """
     Generate a valid JWT token for authenticated requests.
 
@@ -152,7 +189,6 @@ def valid_token(test_user_in_db, test_user_data):
         response = client.get("/users/me", headers=headers)
         assert response.status_code == 200
     """
-    from app.core.security import create_access_token
 
     return create_access_token(test_user_in_db.id)
 
@@ -184,6 +220,70 @@ def weak_passwords():
         "ABCDEFGH",  # Only uppercase
         "",  # Empty
     ]
+
+
+##############################################################################
+# fixtures by catageory
+##############################################################################
+
+
+@pytest.fixture
+def test_property_data():
+    return {
+        "title": "test_property_title",
+        "description": "test decription for properties",
+        "price": 1234,
+        "city": "test_city",
+        "address": "test address",
+        "contact_phone": "+0987654321",
+        "broker_id": "87645542365",
+    }
+
+
+@pytest.fixture
+def test_location_data():
+    return {
+        "location_id": "test-location-1",
+        "name": "Test Location",
+        "latitude": 12.9716,
+        "longitude": 77.5946,
+        "country": "India",
+        "state": "Karnataka",
+    }
+
+
+@pytest.fixture
+def test_property_in_db(test_property_data, test_db, test_user_in_db, test_location_in_db):
+    new_property = Property(
+        title=test_property_data["title"],
+        price=test_property_data["price"],
+        description=test_property_data["description"],
+        city=test_property_data["city"],
+        contact_phone=test_property_data["contact_phone"],
+        address=test_property_data["address"],
+        broker_id=test_user_in_db.id,
+        location_id=test_location_in_db.location_id,
+    )
+    test_db.add(new_property)
+    test_db.commit()
+    test_db.refresh(new_property)
+    return new_property
+
+
+@pytest.fixture
+def test_location_in_db(test_location_data, test_db):
+    location = Location(
+        location_id=test_location_data["location_id"],
+        name=test_location_data["name"],
+        latitude=test_location_data["latitude"],
+        longitude=test_location_data["longitude"],
+        country=test_location_data["country"],
+        state=test_location_data["state"],
+    )
+    test_db.add(location)
+    test_db.commit()
+    test_db.refresh(location)
+    return location
 
 
 # ============================================================================

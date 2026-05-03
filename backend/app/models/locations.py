@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Num
 from sqlalchemy.orm import relationship
 
 # from geoalchemy2 import Geometry
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from app.core.database import Base
 
@@ -18,14 +18,16 @@ class Location(Base):
     state = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
     location_type = Column(String(100), nullable=True)
-    created_by = Column(String(100), ForeignKey("user.id"), nullable=True)
+    created_by = Column(String(100), ForeignKey("users.id"), nullable=True)
 
     # Relationships
-    properties = relationship("Property", back_populates="locations")
+    properties = relationship("Property", back_populates="location")
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
+    )
 
     def __repr__(self):
-        return f"<Location(id={self.id}, name={self.name})>"
+        return f"<Location(location_id={self.location_id}, name={self.name})>"

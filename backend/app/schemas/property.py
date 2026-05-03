@@ -42,7 +42,7 @@ class BrokerResponse(BrokerBase, TimestampMixin):
     total_reviews: int = Field(0, description="Total reviews count")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 # ============================================================================
@@ -71,7 +71,7 @@ class PropertyImageResponse(BaseModel):
     uploaded_at: datetime = Field(..., description="When image was uploaded")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 # ============================================================================
@@ -111,6 +111,9 @@ class PropertyCreateRequest(BaseModel):
         ..., min_length=2, max_length=100, description="City where the property is located"
     )
     address: str = Field(..., min_length=10, max_length=300, description="Full property address")
+    contact_phone: str = Field(
+        ..., min_length=10, max_length=20, description="Contact phone number"
+    )
 
     # Optional fields
     bedrooms: Optional[int] = Field(None, ge=0, description="Number of bedrooms")
@@ -190,7 +193,7 @@ class PropertyListItemResponse(TimestampMixin):
     favorites_count: int = Field(0, description="Number of favorites")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 class PropertyDetailResponse(TimestampMixin):
@@ -241,7 +244,7 @@ class PropertyDetailResponse(TimestampMixin):
     contact_phone: str = Field(..., description="Contact phone")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 class PropertyCreateResponse(BaseModel):
@@ -267,6 +270,9 @@ class PropertyCreateResponse(BaseModel):
     price: float = Field(..., description="Property price")
     status: str = Field(..., description="Initial status")
     created_at: datetime = Field(..., description="Created timestamp")
+
+    class Config:
+        from_attributes = True
 
 
 # ============================================================================
@@ -300,7 +306,7 @@ class PropertyNearbyResponse(BaseModel):
     distance_km: float = Field(..., description="Distance from search location in kilometers")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 class PropertySearchResponseWrapper(BaseModel):
@@ -352,3 +358,6 @@ class PropertyUpdateResponse(BaseModel):
     price: float = Field(..., description="Updated price")
     status: str = Field(..., description="Current status")
     updated_at: datetime = Field(..., description="Last updated timestamp")
+
+    class Config:
+        from_attributes = True

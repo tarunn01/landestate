@@ -21,6 +21,7 @@ from app.schemas.property import (
 from app.core.database import get_db
 from app.api.dependencies import get_current_user
 from app.models.properties import Property as PropertyModel
+from app.models.user import User
 
 
 router = APIRouter(tags=["Properties"])
@@ -45,13 +46,13 @@ class PropertiesResource:
             "total": total,
             "skip": skip,
             "limit": limit,
-            "items": [PropertyDetailResponse.from_orm(p) for p in properties],
+            "items": [PropertyDetailResponse.model_validate(p) for p in properties],
         }
 
     async def create_property(
         self,
         property_in: PropertyCreateRequest,
-        current_user: dict,
+        current_user: User,
     ) -> PropertyCreateResponse:
         """Create a new property."""
         new_property = PropertyModel(
@@ -64,16 +65,17 @@ class PropertiesResource:
             bathrooms=property_in.bathrooms,
             plot_size=property_in.plot_size,
             built_area=property_in.built_area,
-            broker_id=current_user["user_id"],
+            contact_phone=property_in.contact_phone,
+            broker_id=current_user.id,
         )
         self.db.add(new_property)
         self.db.commit()
         self.db.refresh(new_property)
-        return PropertyCreateResponse.from_orm(new_property)
+        return PropertyCreateResponse.model_validate(new_property)
 
 
 # ============================================================================
-# RESOURCE CLASS: PropertyResource (Get, Update, Delete)
+# RESOURCE CLASS: PropertyResource (Get,Update, Delete)
 # ============================================================================
 
 
@@ -93,42 +95,42 @@ class PropertyResource:
     async def get_detail(self, property_id: str) -> PropertyDetailResponse:
         """Get property details."""
         prop = self._get_property(property_id)
-        return PropertyDetailResponse.from_orm(prop)
+        return PropertyDetailResponse.model_validate(prop)
 
     async def update_property(
         self,
         property_id: str,
         property_in: PropertyUpdateRequest,
-        current_user: dict,
+        current_user: User,
     ) -> PropertyUpdateResponse:
         """Update property."""
         prop = self._get_property(property_id)
 
         # Check authorization
-        if prop.broker_id != current_user["user_id"]:
+        if prop.broker_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this property",
             )
 
         # Update fields
-        for field, value in property_in.dict(exclude_unset=True).items():
+        for field, value in property_in.model_dump(exclude_unset=True).items():
             setattr(prop, field, value)
 
         self.db.commit()
         self.db.refresh(prop)
-        return PropertyUpdateResponse.from_orm(prop)
+        return PropertyUpdateResponse.model_validate(prop)
 
     async def delete_property(
         self,
         property_id: str,
-        current_user: dict,
+        current_user: User,
     ) -> dict:
         """Delete property."""
         prop = self._get_property(property_id)
 
         # Check authorization
-        if prop.broker_id != current_user["user_id"]:
+        if prop.broker_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to delete this property",

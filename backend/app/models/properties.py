@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Num
 from sqlalchemy.orm import relationship
 
 # from geoalchemy2 import Geometry
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from app.core.database import Base
 
@@ -21,11 +21,18 @@ class Property(Base):
     plot_size = Column(Float, nullable=True)  # in square meters
     built_area = Column(Float, nullable=True)  # in square meters
     contact_phone = Column(String, nullable=False)
+    status = Column(String, default="AVAILABLE", nullable=False)  # AVAILABLE, SOLD, PENDING
     # geometry = Column(Geometry('POLYGON'), nullable=True)  # Optional geometry
 
     # Foreign key to broker (User)
     broker_id = Column(String, ForeignKey("users.id"), nullable=False)
+    location_id = Column(String, ForeignKey("locations.location_id"), nullable=False)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    # relationships
+    broker = relationship("User", back_populates="properties")
+    location = relationship("Location", back_populates="properties")
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
+    )

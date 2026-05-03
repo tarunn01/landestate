@@ -219,7 +219,7 @@ class TestAuthRegisterEndpoint:
         - Response data: assert response.json()["email"] == "..."
         - Check field exists: assert "access_token" in response.json()
         """
-        response = client.post("/auth/register", json=test_user_data)
+        response = client.post("/api/v1/auth/register", json=test_user_data)
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
@@ -240,7 +240,7 @@ class TestAuthRegisterEndpoint:
         - Should return 400 Bad Request
         - This is a business rule error (not server error)
         """
-        response = client.post("/auth/register", json=test_user_data)
+        response = client.post("/api/v1/auth/register", json=test_user_data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "already" in response.json()["detail"].lower()
@@ -256,7 +256,7 @@ class TestAuthRegisterEndpoint:
             "last_name": "Doe",
         }
 
-        response = client.post("/auth/register", json=invalid_data)
+        response = client.post("/api/v1/auth/register", json=invalid_data)
 
         # Pydantic validation should fail (422)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -272,7 +272,7 @@ class TestAuthRegisterEndpoint:
             "last_name": "Doe",
         }
 
-        response = client.post("/auth/register", json=invalid_data)
+        response = client.post("/api/v1/auth/register", json=invalid_data)
 
         # Pydantic validation should fail (422)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -288,7 +288,7 @@ class TestAuthRegisterEndpoint:
             "last_name": "Doe",
         }
 
-        response = client.post("/auth/register", json=invalid_data)
+        response = client.post("/api/v1/auth/register", json=invalid_data)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
@@ -300,13 +300,13 @@ class TestAuthLoginEndpoint:
     def test_login_success(self, client, test_user_in_db, test_user_data):
         """Test successful login."""
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"email": test_user_data["email"], "password": test_user_data["password"]},
         )
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["email"] == test_user_data["email"]
+        assert data["user"]["email"] == test_user_data["email"]
         assert "access_token" in data
         assert "token_type" in data
         assert data["token_type"] == "bearer"
@@ -316,7 +316,8 @@ class TestAuthLoginEndpoint:
     def test_login_wrong_password(self, client, test_user_in_db, test_user_data):
         """Test login with wrong password."""
         response = client.post(
-            "/auth/login", json={"email": test_user_data["email"], "password": "WrongPassword123"}
+            "/api/v1/auth/login",
+            json={"email": test_user_data["email"], "password": "WrongPassword123"},
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -327,7 +328,8 @@ class TestAuthLoginEndpoint:
     def test_login_user_not_found(self, client):
         """Test login with non-existent user."""
         response = client.post(
-            "/auth/login", json={"email": "nonexistent@example.com", "password": "AnyPassword123"}
+            "/api/v1/auth/login",
+            json={"email": "nonexistent@example.com", "password": "AnyPassword123"},
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -344,7 +346,7 @@ class TestAuthProtectedEndpoint:
 
         Protected endpoints should return 401 if no Authorization header.
         """
-        response = client.get("/users/me")
+        response = client.get("/api/v1/users/me")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -353,7 +355,7 @@ class TestAuthProtectedEndpoint:
     def test_get_profile_with_invalid_token(self, client):
         """Test accessing protected endpoint with invalid token."""
         headers = {"Authorization": "Bearer invalid.token.here"}
-        response = client.get("/users/me", headers=headers)
+        response = client.get("/api/v1/users/me", headers=headers)
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -362,7 +364,7 @@ class TestAuthProtectedEndpoint:
     def test_get_profile_with_valid_token(self, client, valid_token, test_user_in_db):
         """Test accessing protected endpoint with valid token."""
         headers = {"Authorization": f"Bearer {valid_token}"}
-        response = client.get("/users/me", headers=headers)
+        response = client.get("/api/v1/users/me", headers=headers)
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
