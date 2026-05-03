@@ -48,3 +48,6 @@ frontend/build/
 /*.md
 !README.md
 !docs/
+*.txt
+
+backend/backvenv/
