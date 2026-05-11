@@ -8,7 +8,7 @@ RESOURCES:
 - PropertyResource: GET (detail), PUT (update), DELETE (delete)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.schemas.property import (
@@ -17,12 +17,14 @@ from app.schemas.property import (
     PropertyDetailResponse,
     PropertyUpdateRequest,
     PropertyUpdateResponse,
+    PropertyImageResponse,
 )
 from app.core.database import get_db
 from app.api.dependencies import get_current_user
 from app.models.properties import Property as PropertyModel
+from app.models.properties import PropertyImage
 from app.models.user import User
-
+from app.services.s3 import S3Service
 
 router = APIRouter(tags=["Properties"])
 
@@ -57,6 +59,7 @@ class PropertiesResource:
         """Create a new property."""
         new_property = PropertyModel(
             title=property_in.title,
+            location_id=property_in.location_id,
             description=property_in.description,
             price=property_in.price,
             city=property_in.city,
@@ -194,3 +197,29 @@ async def delete_property(
 ):
     """DELETE /properties/{property_id} - Delete property"""
     return await resource.delete_property(property_id, current_user)
+
+
+@router.post("/{property_id}/images", status_code=201)
+async def upload_image(
+    property_id: str,
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+
+    fetched_property = db.query(PropertyModel).filter(PropertyModel.id == property_id).first()
+    if not fetched_property:
+        raise HTTPException(status_code=404, detail="no property found with the details")
+
+    if fetched_property.broker_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="not authorised to upload images."
+        )
+    s3 = S3Service()
+    key, url = s3.upload_image(file.file, property_id, file.filename)
+    property_image = PropertyImage(url=url, property_id=property_id, s3_key=key)
+    db.add(property_image)
+    db.commit()
+    db.refresh(property_image)
+
+    return PropertyImageResponse.model_validate(property_image)

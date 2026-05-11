@@ -9,7 +9,7 @@ Pattern:
 - Clean, readable, no external libraries
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.schemas.auth import (
@@ -21,7 +21,7 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     UserRegisterResponse,
 )
-from app.core.database import get_db
+from app.core.database import get_db, get_redis
 from app.core.security import (
     hash_password,
     verify_password,
@@ -30,7 +30,6 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.api.dependencies import get_current_user
-
 
 router = APIRouter(tags=["Authentication"])
 
@@ -43,8 +42,9 @@ router = APIRouter(tags=["Authentication"])
 class Auth:
     """Authentication resource - handles user login, registration, and logout."""
 
-    def __init__(self, db: Session = Depends(get_db)):
+    def __init__(self, rds=Depends(get_redis), db: Session = Depends(get_db)):
         self.db = db
+        self.rds = rds
 
     async def register(self, request: UserRegisterRequest) -> UserRegisterResponse:
         """Register a new user account."""
@@ -106,8 +106,9 @@ class Auth:
             user=UserResponse.model_validate(user),
         )
 
-    async def logout(self) -> LogoutResponse:
+    async def logout(self, token) -> LogoutResponse:
         """Logout user."""
+        self.rds.setex(f"blacklist:{token}", 900, "true")
         return LogoutResponse(
             message="Successfully logged out",
             status="success",
@@ -188,11 +189,14 @@ async def login(
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
-    current_user=Depends(get_current_user),
+    request: Request,
+    current_user: str = Depends(get_current_user),
     auth: Auth = Depends(),
 ):
+    token = request.headers.get("authorization", "").split(" ")[1]
+
     """POST /auth/logout - Logout user"""
-    return await auth.logout()
+    return await auth.logout(token)
 
 
 @router.get("/me", response_model=UserResponse)

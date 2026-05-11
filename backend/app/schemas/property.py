@@ -11,7 +11,6 @@ from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, validator
 from .common import LocationResponse, TimestampMixin, GeometryCoordinates
 
-
 # ============================================================================
 # BROKER SCHEMAS (Used in property responses)
 # ============================================================================
@@ -106,6 +105,7 @@ class PropertyCreateRequest(BaseModel):
     description: str = Field(
         ..., min_length=10, max_length=5000, description="Property description"
     )
+    location_id: str = Field(..., description="Location ID")
     price: float = Field(..., gt=0, description="Property price")
     city: str = Field(
         ..., min_length=2, max_length=100, description="City where the property is located"
