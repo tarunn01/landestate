@@ -83,6 +83,16 @@ async def get_current_user(
     return user
 
 
+def rate_limit(request: Request, rds=Depends(get_redis)):
+    client_ip = request.client.host
+    key = f"rate_limit:{client_ip}"
+    count = rds.incr(key)
+    if count == 1:
+        rds.expire(key, 60)
+    if count > 10:
+        raise HTTPException(429, "Too many requests")
+
+
 # ============================================================================
 # RBAC: Role checker factory
 # ============================================================================

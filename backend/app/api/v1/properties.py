@@ -10,7 +10,7 @@ RESOURCES:
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
-
+import json
 from app.schemas.property import (
     PropertyCreateRequest,
     PropertyCreateResponse,
@@ -19,8 +19,8 @@ from app.schemas.property import (
     PropertyUpdateResponse,
     PropertyImageResponse,
 )
-from app.core.database import get_db
-from app.api.dependencies import get_current_user
+from app.core.database import get_db, get_redis
+from app.api.dependencies import get_current_user, rate_limit
 from app.models.properties import Property as PropertyModel
 from app.models.properties import PropertyImage
 from app.models.user import User
@@ -37,19 +37,27 @@ router = APIRouter(tags=["Properties"])
 class PropertiesResource:
     """Resource for managing the collection of properties."""
 
-    def __init__(self, db: Session = Depends(get_db)):
+    def __init__(self, db: Session = Depends(get_db), rds=Depends(get_redis)):
         self.db = db
+        self.rds = rds
 
     async def list_properties(self, skip: int = 0, limit: int = 10) -> dict:
         """List all properties with pagination."""
-        properties = self.db.query(PropertyModel).offset(skip).limit(limit).all()
-        total = self.db.query(PropertyModel).count()
-        return {
+        key = f"properties:{skip}:{limit}"
+        cached = self.rds.get(key)
+        if cached:
+            return json.loads(cached)
+        else:
+            properties = self.db.query(PropertyModel).offset(skip).limit(limit).all()
+            total = self.db.query(PropertyModel).count()
+        result = {
             "total": total,
             "skip": skip,
             "limit": limit,
             "items": [PropertyDetailResponse.model_validate(p) for p in properties],
         }
+        self.rds.setex(key, 60, json.dumps(result))
+        return result
 
     async def create_property(
         self,
@@ -202,6 +210,7 @@ async def delete_property(
 @router.post("/{property_id}/images", status_code=201)
 async def upload_image(
     property_id: str,
+    _=Depends(rate_limit),
     file: UploadFile = File(...),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),

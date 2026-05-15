@@ -29,7 +29,7 @@ from app.core.security import (
     verify_token,
 )
 from app.models.user import User
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, rate_limit
 
 router = APIRouter(tags=["Authentication"])
 
@@ -181,6 +181,7 @@ class AuthRefresh:
 @router.post("/login", response_model=LoginResponse)
 async def login(
     request: UserLoginRequest,
+    _=Depends(rate_limit),
     auth: Auth = Depends(),
 ):
     """POST /auth/login - User login"""
@@ -226,10 +227,7 @@ async def refresh_token(
 
 
 @router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
-async def register(
-    request: UserRegisterRequest,
-    auth: Auth = Depends(),
-):
+async def register(request: UserRegisterRequest, _=Depends(rate_limit), auth: Auth = Depends()):
     """POST /auth/register - Register new user and return tokens"""
     return await auth.register(request)
 
