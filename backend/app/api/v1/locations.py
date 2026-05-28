@@ -1,6 +1,5 @@
 """
 File: backend/app/api/v1/locations.py
-
 LOCATION ENDPOINTS - Pure FastAPI with Class-Based Resources
 
 RESOURCES:
@@ -16,7 +15,6 @@ from app.models.locations import Location as LocationModel
 
 from app.schemas.locations import (
     LocationCreateRequest,
-    LocationDetailedResponse,
     LocationResponse,
     LocationUpdateRequest,
     LocationUpdateResponse,
@@ -45,7 +43,12 @@ class LocationsResource:
             "total": total,
             "skip": skip,
             "limit": limit,
-            "items": [LocationDetailedResponse.from_orm(p) for p in locations],
+            "items": [
+                LocationResponse.model_validate(
+                    location, update={"property_count": len(location.properties)}
+                )
+                for location in locations
+            ],
         }
 
     async def create_location(
@@ -53,17 +56,18 @@ class LocationsResource:
     ) -> LocationResponse:
         """Create a new location."""
         new_location = LocationModel(
-            name=location_in.location_name,
+            name=location_in.name,
             country=location_in.country,
             latitude=location_in.latitude,
             longitude=location_in.longitude,
             description=location_in.description,
-            created_by=current_user["user_id"],
+            created_by=current_user.id,
+            state=location_in.state,
         )
         self.db.add(new_location)
         self.db.commit()
         self.db.refresh(new_location)
-        return LocationResponse.from_orm(new_location)
+        return LocationResponse.model_validate(new_location)
 
 
 # ============================================================================
@@ -86,10 +90,12 @@ class LocationResource:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
         return location
 
-    async def get_detail(self, location_id: str) -> LocationDetailedResponse:
+    async def get_detail(self, location_id: str) -> LocationResponse:
         """Get location details."""
         location = self._get_location(location_id)
-        return LocationDetailedResponse.from_orm(location)
+        return LocationResponse.model_validate(
+            location,
+        )
 
     async def update_location(
         self, location_id: str, location_in: LocationUpdateRequest, current_user: dict
@@ -98,8 +104,8 @@ class LocationResource:
         location = self._get_location(location_id)
 
         # Authorization: admin or creator
-        is_admin = current_user["role"] == "admin"
-        is_creator = location.created_by == current_user["user_id"]
+        is_admin = current_user.role == "ADMIN"
+        is_creator = location.created_by == current_user.id
 
         if not (is_admin or is_creator):
             raise HTTPException(
@@ -108,20 +114,20 @@ class LocationResource:
             )
 
         # Update fields
-        for field, value in location_in.dict(exclude_unset=True).items():
+        for field, value in location_in.model_dump(exclude_unset=True).items():
             setattr(location, field, value)
 
         self.db.commit()
         self.db.refresh(location)
-        return LocationUpdateResponse.from_orm(location)
+        return LocationUpdateResponse.model_validate(location)
 
     async def delete_location(self, location_id: str, current_user: dict) -> dict:
         """Delete location - admin or creator can delete."""
         location = self._get_location(location_id)
 
         # Authorization: admin or creator
-        is_admin = current_user["role"] == "admin"
-        is_creator = location.created_by == current_user["user_id"]
+        is_admin = current_user.role == "ADMIN"
+        is_creator = location.created_by == current_user.id
 
         if not (is_admin or is_creator):
             raise HTTPException(
@@ -140,15 +146,13 @@ class LocationResource:
 
 
 @router.get("/locations", response_model=dict)
-async def list_locations_handler(
-    skip: int = 0, limit: int = 10, resource: LocationsResource = Depends()
-):
+async def list_locations(skip: int = 0, limit: int = 10, resource: LocationsResource = Depends()):
     """List all locations with pagination."""
     return await resource.list_locations(skip=skip, limit=limit)
 
 
 @router.post("/locations", response_model=LocationResponse)
-async def create_location_handler(
+async def create_location(
     location_in: LocationCreateRequest,
     current_user: dict = Depends(get_current_user),
     resource: LocationsResource = Depends(),
@@ -157,16 +161,16 @@ async def create_location_handler(
     return await resource.create_location(location_in=location_in, current_user=current_user)
 
 
-@router.get("/locations/{location_id}", response_model=LocationDetailedResponse)
-async def get_location_detail_handler(
+@router.get("/locations/{location_id}", response_model=LocationResponse)
+async def get_location_detail(
     location_id: str, resource: LocationResource = Depends()
-) -> LocationDetailedResponse:
+) -> LocationResponse:
     """Get location details."""
     return await resource.get_detail(location_id=location_id)
 
 
 @router.put("/locations/{location_id}", response_model=LocationUpdateResponse)
-async def update_location_handler(
+async def update_location(
     location_id: str,
     location_in: LocationUpdateRequest,
     current_user: dict = Depends(get_current_user),

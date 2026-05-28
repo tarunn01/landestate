@@ -9,7 +9,7 @@ Pattern:
 - Clean, readable, no external libraries
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.schemas.auth import (
@@ -19,8 +19,9 @@ from app.schemas.auth import (
     UserResponse,
     LogoutResponse,
     RefreshTokenRequest,
+    UserRegisterResponse,
 )
-from app.core.database import get_db
+from app.core.database import get_db, get_redis
 from app.core.security import (
     hash_password,
     verify_password,
@@ -28,8 +29,7 @@ from app.core.security import (
     verify_token,
 )
 from app.models.user import User
-from app.api.dependencies import get_current_user
-
+from app.api.dependencies import get_current_user, rate_limit
 
 router = APIRouter(tags=["Authentication"])
 
@@ -42,10 +42,11 @@ router = APIRouter(tags=["Authentication"])
 class Auth:
     """Authentication resource - handles user login, registration, and logout."""
 
-    def __init__(self, db: Session = Depends(get_db)):
+    def __init__(self, rds=Depends(get_redis), db: Session = Depends(get_db)):
         self.db = db
+        self.rds = rds
 
-    async def register(self, request: UserRegisterRequest) -> LoginResponse:
+    async def register(self, request: UserRegisterRequest) -> UserRegisterResponse:
         """Register a new user account."""
         existing_user = self.db.query(User).filter(User.email == request.email).first()
         if existing_user:
@@ -68,12 +69,17 @@ class Auth:
         self.db.refresh(new_user)
 
         tokens = create_token_pair(str(new_user.id))
-        return LoginResponse(
+        return UserRegisterResponse(
+            id=str(new_user.id),
+            email=new_user.email,
+            first_name=new_user.first_name,
+            last_name=new_user.last_name,
+            phone=new_user.phone,
+            role=new_user.role,
             access_token=tokens["access_token"],
             refresh_token=tokens["refresh_token"],
             token_type="bearer",
             expires_in=3600,
-            user=UserResponse.from_orm(new_user),
         )
 
     async def login(self, request: UserLoginRequest) -> LoginResponse:
@@ -97,11 +103,12 @@ class Auth:
             refresh_token=tokens["refresh_token"],
             token_type="bearer",
             expires_in=3600,
-            user=UserResponse.from_orm(user),
+            user=UserResponse.model_validate(user),
         )
 
-    async def logout(self) -> LogoutResponse:
+    async def logout(self, token) -> LogoutResponse:
         """Logout user."""
+        self.rds.setex(f"blacklist:{token}", 900, "true")
         return LogoutResponse(
             message="Successfully logged out",
             status="success",
@@ -162,7 +169,7 @@ class AuthRefresh:
             refresh_token=tokens["refresh_token"],
             token_type="bearer",
             expires_in=3600,
-            user=UserResponse.from_orm(user),
+            user=UserResponse.model_validate(user),
         )
 
 
@@ -171,18 +178,10 @@ class AuthRefresh:
 # ============================================================================
 
 
-@router.post("", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
-async def register(
-    request: UserRegisterRequest,
-    auth: Auth = Depends(),
-):
-    """POST /auth - Register new user"""
-    return await auth.register(request)
-
-
 @router.post("/login", response_model=LoginResponse)
 async def login(
     request: UserLoginRequest,
+    _=Depends(rate_limit),
     auth: Auth = Depends(),
 ):
     """POST /auth/login - User login"""
@@ -191,11 +190,14 @@ async def login(
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
-    current_user=Depends(get_current_user),
+    request: Request,
+    current_user: str = Depends(get_current_user),
     auth: Auth = Depends(),
 ):
+    token = request.headers.get("authorization", "").split(" ")[1]
+
     """POST /auth/logout - Logout user"""
-    return await auth.logout()
+    return await auth.logout(token)
 
 
 @router.get("/me", response_model=UserResponse)
@@ -222,3 +224,18 @@ async def refresh_token(
 ):
     """POST /auth/refresh - Get new access token"""
     return await auth_refresh.refresh(request)
+
+
+@router.post("/register", response_model=UserRegisterResponse, status_code=status.HTTP_201_CREATED)
+async def register(request: UserRegisterRequest, _=Depends(rate_limit), auth: Auth = Depends()):
+    """POST /auth/register - Register new user and return tokens"""
+    return await auth.register(request)
+
+
+# @router.post("", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+# async def register(
+#     request: UserRegisterRequest,
+#     auth: Auth = Depends(),
+# ):
+#     """POST /auth - Register new user"""
+#     return await auth.register(request)

@@ -42,7 +42,7 @@ class UserRegisterRequest(BaseModel):
     # EXAMPLES: john@example.com, jane_doe@company.co.uk, user+tag@domain.org
     # ERROR CODE: INVALID_EMAIL
     email: EmailStr = Field(..., description="User email (must be valid email format)")
-    
+
     # FIELD: password
     # RULES:
     #   - Minimum 8 characters, Maximum 100 characters
@@ -52,24 +52,33 @@ class UserRegisterRequest(BaseModel):
     #   - Must contain at least 1 special character (!@#$%^&*...)
     # EXAMPLES: SecurePass123!, MyP@ssw0rd, Test!2024Pass
     # ERROR CODE: WEAK_PASSWORD
-    password: str = Field(..., min_length=8, max_length=100, description="Strong password (8-100 chars: uppercase, lowercase, digit, special)")
-    
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=100,
+        description="Strong password (8-100 chars: uppercase, lowercase, digit, special)",
+    )
+
     # FIELD: first_name
     # RULES:
     #   - Minimum 1 character, Maximum 50 characters
     #   - Required (cannot be null or empty)
     # EXAMPLES: John, Mary-Jane, José, 李
     # ERROR CODES: VALUE_TOO_SHORT, VALUE_TOO_LONG
-    first_name: str = Field(..., min_length=1, max_length=50, description="User's first name (1-50 characters)")
-    
+    first_name: str = Field(
+        ..., min_length=1, max_length=50, description="User's first name (1-50 characters)"
+    )
+
     # FIELD: last_name
     # RULES:
     #   - Minimum 1 character, Maximum 50 characters
     #   - Required (cannot be null or empty)
     # EXAMPLES: Doe, Smith-Johnson, García, 王
     # ERROR CODES: VALUE_TOO_SHORT, VALUE_TOO_LONG
-    last_name: str = Field(..., min_length=1, max_length=50, description="User's last name (1-50 characters)")
-    
+    last_name: str = Field(
+        ..., min_length=1, max_length=50, description="User's last name (1-50 characters)"
+    )
+
     # FIELD: phone
     # RULES:
     #   - Optional (can be null or empty string)
@@ -78,8 +87,10 @@ class UserRegisterRequest(BaseModel):
     #   - Formatting chars (+, -, (, ), spaces) are stripped before validation
     # EXAMPLES: +1234567890, 123-456-7890, (123) 456-7890, +1-234-567-8901
     # ERROR CODE: INVALID_PHONE
-    phone: Optional[str] = Field(None, description="Phone number (optional: 10-15 digits, e.g., +1234567890 or 123-456-7890)")
-    
+    phone: Optional[str] = Field(
+        None, description="Phone number (optional: 10-15 digits, e.g., +1234567890 or 123-456-7890)"
+    )
+
     # FIELD: role
     # RULES:
     #   - Must be one of: USER, BROKER, OWNER
@@ -87,7 +98,9 @@ class UserRegisterRequest(BaseModel):
     #   - Case-sensitive (only uppercase values allowed)
     # EXAMPLES: USER, BROKER, OWNER
     # ERROR CODE: INVALID_CHOICE
-    role: Literal["USER", "BROKER", "OWNER"] = Field("USER", description="User role (USER, BROKER, or OWNER)")
+    role: Literal["USER", "BROKER", "OWNER"] = Field(
+        "USER", description="User role (USER, BROKER, or OWNER)"
+    )
 
     class Config:
         json_schema_extra = {
@@ -150,7 +163,7 @@ class UserLoginRequest(BaseModel):
 
     Authenticates user with email and password.
     Returns access_token and refresh_token if credentials are valid.
-    
+
     EXAMPLE REQUEST:
     {
         "email": "john@example.com",
@@ -163,7 +176,7 @@ class UserLoginRequest(BaseModel):
     # EXAMPLES: john@example.com, user@company.org
     # ERROR CODE: INVALID_EMAIL
     email: EmailStr = Field(..., description="User email (must be valid email format)")
-    
+
     # FIELD: password
     # RULES: User's account password (no additional length restrictions on login)
     # EXAMPLES: SecurePass123!
@@ -282,6 +295,66 @@ class UserResponse(TimestampMixin):
 
     class Config(TimestampMixin.Config):
         from_attributes = True  # Allow conversion from SQLAlchemy ORM models
+
+
+class UserRegisterResponse(BaseModel):
+    """
+    Response body for POST /auth/register - User registration success.
+
+    INCLUDES:
+    - User data (id, email, name, etc.)
+    - Access token (for immediate API access)
+    - Refresh token (to get new access token when expired)
+
+    EXAMPLE RESPONSE (201 Created):
+    {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "email": "john@example.com",
+        "first_name": "John",
+        "last_name": "Doe",
+        "phone": "+1234567890",
+        "role": "USER",
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "token_type": "bearer",
+        "expires_in": 3600
+    }
+
+    WHY COMBINED?
+    - User gets immediate auth tokens after registration
+    - Can use access_token right away for API calls
+    - Single response instead of multiple requests
+    """
+
+    # User fields
+    id: str = Field(..., description="User unique ID (UUID)")
+    email: str = Field(..., description="User email address")
+    first_name: str = Field(..., description="User's first name")
+    last_name: str = Field(..., description="User's last name")
+    phone: Optional[str] = Field(None, description="User's phone number")
+    role: str = Field(..., description="User role (USER, BROKER, OWNER)")
+
+    # Token fields
+    access_token: str = Field(..., description="JWT access token (use in Authorization header)")
+    refresh_token: str = Field(..., description="JWT refresh token (use to get new access token)")
+    token_type: str = Field("bearer", description="Token type (always 'bearer' for JWT)")
+    expires_in: int = Field(3600, description="Access token expiration time in seconds")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "email": "john@example.com",
+                "first_name": "John",
+                "last_name": "Doe",
+                "phone": "+1234567890",
+                "role": "USER",
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWlkIiwiaWF0IjoxNzA0MjcxNDAwLCJleHAiOjE3MDQyNzUwMDB9.signature",
+                "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLWlkIiwiaWF0IjoxNzA0MjcxNDAwLCJleHAiOjE3MDQ4NzY2MDB9.signature",
+                "token_type": "bearer",
+                "expires_in": 3600,
+            }
+        }
 
 
 class TokenResponse(BaseModel):

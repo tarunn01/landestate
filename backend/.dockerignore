@@ -1,0 +1,4 @@
+backvenv/
+**/__pycache__
+test.db
+.env

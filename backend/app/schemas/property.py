@@ -11,7 +11,6 @@ from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, validator
 from .common import LocationResponse, TimestampMixin, GeometryCoordinates
 
-
 # ============================================================================
 # BROKER SCHEMAS (Used in property responses)
 # ============================================================================
@@ -25,7 +24,7 @@ class BrokerBase(BaseModel):
     """
 
     id: str = Field(..., description="Broker unique ID")
-    name: str = Field(..., description="Broker name")
+    name: Optional[str] = Field(None, description="Broker name")
     phone: str = Field(..., description="Broker phone")
     email: str = Field(..., description="Broker email")
     company: Optional[str] = Field(None, description="Company name")
@@ -42,7 +41,7 @@ class BrokerResponse(BrokerBase, TimestampMixin):
     total_reviews: int = Field(0, description="Total reviews count")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 # ============================================================================
@@ -71,7 +70,7 @@ class PropertyImageResponse(BaseModel):
     uploaded_at: datetime = Field(..., description="When image was uploaded")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 # ============================================================================
@@ -106,11 +105,15 @@ class PropertyCreateRequest(BaseModel):
     description: str = Field(
         ..., min_length=10, max_length=5000, description="Property description"
     )
+    location_id: str = Field(..., description="Location ID")
     price: float = Field(..., gt=0, description="Property price")
     city: str = Field(
         ..., min_length=2, max_length=100, description="City where the property is located"
     )
     address: str = Field(..., min_length=10, max_length=300, description="Full property address")
+    contact_phone: str = Field(
+        ..., min_length=10, max_length=20, description="Contact phone number"
+    )
 
     # Optional fields
     bedrooms: Optional[int] = Field(None, ge=0, description="Number of bedrooms")
@@ -190,7 +193,7 @@ class PropertyListItemResponse(TimestampMixin):
     favorites_count: int = Field(0, description="Number of favorites")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 class PropertyDetailResponse(TimestampMixin):
@@ -213,11 +216,11 @@ class PropertyDetailResponse(TimestampMixin):
     id: str = Field(..., description="Property unique ID")
     title: str = Field(..., description="Property title")
     description: str = Field(..., description="Full description")
-    property_type: str = Field(..., description="Property type")
+    property_type: Optional[str] = Field(None, description="Property type")
     price: float = Field(..., description="Property price")
-    currency: str = Field(..., description="Currency code")
-    area_sqft: float = Field(..., description="Area in square feet")
-    total_area_sqm: float = Field(..., description="Area in square meters")
+    currency: Optional[str] = Field(None, description="Currency code")
+    area_sqft: Optional[float] = Field(None, description="Area in square feet")
+    total_area_sqm: Optional[float] = Field(None, description="Area in square meters")
 
     # Location with full details
     location: LocationResponse = Field(..., description="Location details")
@@ -241,7 +244,7 @@ class PropertyDetailResponse(TimestampMixin):
     contact_phone: str = Field(..., description="Contact phone")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 class PropertyCreateResponse(BaseModel):
@@ -267,6 +270,9 @@ class PropertyCreateResponse(BaseModel):
     price: float = Field(..., description="Property price")
     status: str = Field(..., description="Initial status")
     created_at: datetime = Field(..., description="Created timestamp")
+
+    class Config:
+        from_attributes = True
 
 
 # ============================================================================
@@ -300,7 +306,7 @@ class PropertyNearbyResponse(BaseModel):
     distance_km: float = Field(..., description="Distance from search location in kilometers")
 
     class Config:
-        from_orm = True
+        from_attributes = True
 
 
 class PropertySearchResponseWrapper(BaseModel):
@@ -352,3 +358,6 @@ class PropertyUpdateResponse(BaseModel):
     price: float = Field(..., description="Updated price")
     status: str = Field(..., description="Current status")
     updated_at: datetime = Field(..., description="Last updated timestamp")
+
+    class Config:
+        from_attributes = True

@@ -9,7 +9,7 @@ WHY? To enforce consistent data validation and auto-generate API docs.
 
 from datetime import datetime
 from typing import Generic, List, Optional, TypeVar
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field, EmailStr, validator, ConfigDict
 
 T = TypeVar("T")
 
@@ -93,7 +93,7 @@ class ErrorDetail(BaseModel):
 class ValidationErrorResponse(BaseModel):
     """
     Standard validation error response (422 Unprocessable Entity).
-    
+
     Used when request body has validation errors.
 
     EXAMPLE:
@@ -128,9 +128,9 @@ class ValidationErrorResponse(BaseModel):
                     {
                         "field": "password",
                         "message": "Password must contain at least 1 uppercase letter",
-                        "code": "WEAK_PASSWORD"
+                        "code": "WEAK_PASSWORD",
                     }
-                ]
+                ],
             }
         }
 
@@ -138,7 +138,7 @@ class ValidationErrorResponse(BaseModel):
 class AuthErrorResponse(BaseModel):
     """
     Authentication error response (401/403 status).
-    
+
     Used for login failures, token issues, permission errors.
 
     ERROR CODES:
@@ -157,14 +157,16 @@ class AuthErrorResponse(BaseModel):
 
     detail: str = Field(..., description="Error description")
     error_code: str = Field(..., description="Error code for client handling")
-    errors: Optional[List[ErrorDetail]] = Field(None, description="Additional error details (optional)")
+    errors: Optional[List[ErrorDetail]] = Field(
+        None, description="Additional error details (optional)"
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "detail": "Invalid email or password",
                 "error_code": "INVALID_CREDENTIALS",
-                "errors": None
+                "errors": None,
             }
         }
 
@@ -220,7 +222,7 @@ class LocationBase(CoordinateBase):
 
     name: str = Field(..., min_length=1, max_length=255, description="Location name")
     address: Optional[str] = Field(None, max_length=500, description="Street address")
-    city: str = Field(..., min_length=1, max_length=100, description="City name")
+    # city: str = Field(..., min_length=1, max_length=100, description="City name")
     state: Optional[str] = Field(None, max_length=100, description="State/Province")
     country: str = Field(..., min_length=1, max_length=100, description="Country name")
     zip_code: Optional[str] = Field(None, max_length=20, description="Postal code")
@@ -235,11 +237,21 @@ class LocationResponse(LocationBase):
     - Property count in this location
     """
 
-    id: str = Field(..., description="Location unique ID (UUID)")
+    name: str = Field(...)
+    location_id: str = Field(..., description="Location unique ID (UUID)")
+    latitude: float = Field(..., description="location precise latitude")
+    longitude: float = Field(..., description="location precise longitude")
+    created_at: datetime = Field(..., description="giving location created timestamp.")
+    updated_at: datetime = Field(..., description="giving updated location timestamp.")
+
+    country: str = Field(..., description="location country")
+    state: str = Field(..., description="location's state")
+    description: Optional[str] = Field(None, description="short description of location")
+    location_type: Optional[str] = Field(None, description="type of location")
+
     property_count: int = Field(0, description="Number of properties in location")
 
-    class Config:
-        from_orm = True  # Works with SQLAlchemy models
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
