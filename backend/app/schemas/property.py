@@ -24,7 +24,7 @@ class BrokerBase(BaseModel):
     """
 
     id: str = Field(..., description="Broker unique ID")
-    name: str = Field(..., description="Broker name")
+    name: Optional[str] = Field(None, description="Broker name")
     phone: str = Field(..., description="Broker phone")
     email: str = Field(..., description="Broker email")
     company: Optional[str] = Field(None, description="Company name")
@@ -216,11 +216,11 @@ class PropertyDetailResponse(TimestampMixin):
     id: str = Field(..., description="Property unique ID")
     title: str = Field(..., description="Property title")
     description: str = Field(..., description="Full description")
-    property_type: str = Field(..., description="Property type")
+    property_type: Optional[str] = Field(None, description="Property type")
     price: float = Field(..., description="Property price")
-    currency: str = Field(..., description="Currency code")
-    area_sqft: float = Field(..., description="Area in square feet")
-    total_area_sqm: float = Field(..., description="Area in square meters")
+    currency: Optional[str] = Field(None, description="Currency code")
+    area_sqft: Optional[float] = Field(None, description="Area in square feet")
+    total_area_sqm: Optional[float] = Field(None, description="Area in square meters")
 
     # Location with full details
     location: LocationResponse = Field(..., description="Location details")

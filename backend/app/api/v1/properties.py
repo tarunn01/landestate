@@ -11,6 +11,7 @@ RESOURCES:
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 import json
+from celery import chain
 from app.schemas.property import (
     PropertyCreateRequest,
     PropertyCreateResponse,
@@ -25,6 +26,7 @@ from app.models.properties import Property as PropertyModel
 from app.models.properties import PropertyImage
 from app.models.user import User
 from app.services.s3 import S3Service
+from app.tasks import validate_image, notify_broker
 
 router = APIRouter(tags=["Properties"])
 
@@ -54,7 +56,9 @@ class PropertiesResource:
             "total": total,
             "skip": skip,
             "limit": limit,
-            "items": [PropertyDetailResponse.model_validate(p) for p in properties],
+            "items": [
+                PropertyDetailResponse.model_validate(p).model_dump(mode="json") for p in properties
+            ],
         }
         self.rds.setex(key, 60, json.dumps(result))
         return result
@@ -231,4 +235,36 @@ async def upload_image(
     db.commit()
     db.refresh(property_image)
 
+    chain(
+        validate_image.s(property_id, key),
+        notify_broker.s(url),
+    ).apply_async()
+
     return PropertyImageResponse.model_validate(property_image)
+
+
+@router.delete("/{property_id}/images/{image_id}")
+async def delete_image(
+    property_id: str,
+    image_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    fetched_property = db.query(PropertyModel).filter(PropertyModel.id == property_id).first()
+    fetched_image = db.query(PropertyImage).filter(PropertyImage.id == image_id).first()
+    if not fetched_property:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="details not found")
+    if not fetched_image:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="details not found")
+    if fetched_image.property_id != property_id:
+        raise HTTPException(status_code=404, detail="Image not found for this property")
+
+    if fetched_property.broker_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=" not allowed for this operation"
+        )
+    s3 = S3Service()
+    s3.delete_image(fetched_image.s3_key)
+    db.delete(fetched_image)
+    db.commit()
+    return {"message": "Image deleted", "id": image_id}

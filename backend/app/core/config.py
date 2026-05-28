@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
     AWS_REGION: str = "ap-south-1"
     S3_BUCKET_NAME: str = "landestate-images-tarun"
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
 
     class Config:
         env_file = ".env"

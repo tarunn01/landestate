@@ -15,14 +15,18 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker, Session
 from fastapi.testclient import TestClient
 
+from unittest.mock import MagicMock
+
+
 from app.main import app
-from app.core.database import Base, get_db
+from app.core.database import Base, get_db, get_redis
 from app.core.security import hash_password
 from app.core.security import create_access_token
+from app.api.dependencies import rate_limit
 
 from app.models.user import User
 from app.models.locations import Location
-from app.models.properties import Property
+from app.models.properties import Property, PropertyImage
 
 # ============================================================================
 # DATABASE FIXTURES
@@ -86,6 +90,18 @@ def client(test_db):
         assert response.status_code == 200
     """
     return TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def mock_dependencies(test_db):
+    mock_rds = MagicMock()
+    mock_rds.get.return_value = None
+    mock_rds.incr.return_vale = 1
+
+    app.dependency_overrides[get_redis] = lambda: mock_rds
+    app.dependency_overrides[rate_limit] = lambda: None
+
+    yield mock_rds
 
 
 # ============================================================================
@@ -284,6 +300,19 @@ def test_location_in_db(test_location_data, test_db):
     test_db.commit()
     test_db.refresh(location)
     return location
+
+
+@pytest.fixture
+def test_image_in_db(test_db, test_property_in_db):
+    image = PropertyImage(
+        property_id=test_property_in_db.id,
+        url="https://fakeid.com/test.jpg",
+        s3_key="properties/test/fake-key.jpg",
+    )
+    test_db.add(image)
+    test_db.commit()
+    test_db.refresh(image)
+    return image
 
 
 # ============================================================================

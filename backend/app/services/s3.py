@@ -15,3 +15,8 @@ class S3Service:
 
     def delete_image(self, s3_key):
         self.client.delete_object(Bucket=settings.S3_BUCKET_NAME, Key=s3_key)
+
+    def download_image(self, s3_key):
+        response = self.client.get_object(Bucket=settings.S3_BUCKET_NAME, Key=s3_key)
+        image_bytes = response["Body"].read()
+        return image_bytes

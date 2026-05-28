@@ -466,3 +466,77 @@ class TestWithFixtures:
         """
         assert isinstance(valid_token, str)
         assert len(valid_token) > 0
+
+
+# ============================================================================
+# REFRESH TOKEN TESTS
+# ============================================================================
+
+
+class TestRefreshTokens:
+    """Test refresh token creation, verification, and token pairs."""
+
+    @pytest.mark.unit
+    def test_create_refresh_token_returns_string(self):
+        from app.core.security import create_refresh_token
+
+        token = create_refresh_token("user-123")
+        assert isinstance(token, str)
+        assert len(token) > 0
+
+    @pytest.mark.unit
+    def test_verify_refresh_token_valid(self):
+        from app.core.security import create_refresh_token, verify_token
+
+        token = create_refresh_token("user-123")
+        result = verify_token(token, token_type="refresh")
+        assert result == "user-123"
+
+    @pytest.mark.unit
+    def test_refresh_token_fails_as_access_type(self):
+        """A refresh token must not be accepted where an access token is expected."""
+        from app.core.security import create_refresh_token, verify_token
+
+        refresh = create_refresh_token("user-123")
+        result = verify_token(refresh, token_type="access")
+        assert result is None
+
+    @pytest.mark.unit
+    def test_access_token_fails_as_refresh_type(self):
+        """An access token must not be accepted where a refresh token is expected."""
+        from app.core.security import create_access_token, verify_token
+
+        access = create_access_token("user-123")
+        result = verify_token(access, token_type="refresh")
+        assert result is None
+
+    @pytest.mark.unit
+    def test_create_token_pair_structure(self):
+        from app.core.security import create_token_pair
+
+        tokens = create_token_pair("user-123")
+        assert "access_token" in tokens
+        assert "refresh_token" in tokens
+        assert tokens["token_type"] == "bearer"
+        assert tokens["expires_in"] == 900
+        assert isinstance(tokens["access_token"], str)
+        assert isinstance(tokens["refresh_token"], str)
+
+    @pytest.mark.unit
+    def test_create_access_token_with_custom_expiry(self):
+        from datetime import timedelta
+        from app.core.security import create_access_token, verify_token
+
+        token = create_access_token("user-123", expires_delta=timedelta(hours=1))
+        result = verify_token(token)
+        assert result == "user-123"
+
+    @pytest.mark.unit
+    def test_verify_expired_token_returns_none(self):
+        from datetime import timedelta
+        from app.core.security import create_access_token, verify_token
+
+        # Negative delta creates an already-expired token
+        token = create_access_token("user-123", expires_delta=timedelta(seconds=-1))
+        result = verify_token(token)
+        assert result is None
