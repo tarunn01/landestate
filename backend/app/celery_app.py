@@ -1,8 +1,11 @@
+import os
 from celery import Celery
+
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
 celery_app = Celery(
     "landestate",
-    broker="redis://redis:6379/0",
-    backend="redis://redis:6379/0",
+    broker=REDIS_URL,
+    backend=REDIS_URL,
     include=["app.tasks"],
 )

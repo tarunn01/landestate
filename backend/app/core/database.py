@@ -11,7 +11,7 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-red = redis.Redis(host="redis", port=6379, decode_responses=True)
+red = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 def get_redis():

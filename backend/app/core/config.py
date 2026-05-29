@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str = "landestate-images-tarun"
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     class Config:
         env_file = ".env"

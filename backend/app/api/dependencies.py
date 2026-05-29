@@ -204,6 +204,7 @@ async def verify_refresh_token(request: Request) -> str:
     async def refresh(user_id = Depends(verify_refresh_token)):
         access_token = create_access_token(user_id)
         return {...}
+
     """
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
